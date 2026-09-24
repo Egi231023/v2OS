@@ -1,52 +1,37 @@
-# ProjectOS — implementation notes
+# Implementation and operation
 
-## Authorized target
-- GitHub: Egi231023/v2OS. Empty main branch verified 2026-09-24. This is the requested source repository.
-- Supabase: Os realestate (hpnwxjfyfsoauxqhpjtb), ca-central-1. Existing companies/memberships/projects/units/publications tables contain no rows; preserve them.
-- Product: simple, functional residential sales, delivery and care system for developers, agencies, buyers and contractors.
-- Design: warm light workspace, graphite text and deep green actions; calm, readable, restrained luxury. English UI, translation strings separated; CAD fictional Canadian demo.
-- Execute sequentially and autonomously; verify each phase and provide concise updates. No optional production services or billing activation.
+## Stack
 
-## Source completeness
-The supplied attachment contains chapters 1–19 and only the beginning of chapter 20. It literally ends with `... (19 KB left)`. Chapter 21 and the remaining acceptance criteria were NOT supplied. Do not claim to have read or implemented missing content. Preserve the received brief in docs/source-brief.md.
+React 19, TypeScript, Vinext/Next-compatible routing, existing Shadcn primitives, Cloudflare-compatible Sites Worker. Supabase Postgres, private Storage, Edge Functions and pg_cron provide server persistence. Keep `pnpm-lock.yaml` and use the declared pnpm version.
 
-## Architecture decisions
-- One modular Vinext/React application, server route handlers and Supabase Postgres/Storage/Edge Functions. Sites provides private hosting; GitHub v2OS retains source.
-- Isolate new data under a projectos schema; do not repurpose existing unidentified tables.
-- Authoritative relational records for organization/project/inventory/deal/allocation/payment and explicit workflow records for supporting modules.
-- Transactions, locks, unique active allocations, immutable money records, idempotency and optimistic versions enforced on the server/database.
-- Prototype/demo is explicit and uses fictional data. Production remains disabled until responsible organization, approved local policies/templates/bank account and verification are supplied.
-- Private authenticated preview uses platform identity. Production external Supabase Auth integration must be verified before enabling real users; demo identities never become production memberships.
-- No paid provider required for the manual signing and bank-verification workflows; no email or SMS delivery is claimed.
+The demonstration state is a versioned JSONB aggregate per authenticated Site viewer. A workspace row lock serializes writes; normalized allocation rows enforce exclusive inventory through a partial unique index. The commit RPC checks references and payment allocation bounds and writes state, audit, outbox and idempotency together. This deliberate demonstration architecture is not the final normalized, shared multi-user production model.
 
-## Build sequence
-1. Record requirements and preserve source; inspect existing repository/database.
-2. Theme, seven-item internal navigation, developer dashboard, project/inventory, deal, buyer home and contractor job screens.
-3. Database scopes, grants, server access layer and isolated demo sessions.
-4. CRM, offers, hold/reservation, signature evidence, payments and cancellation.
-5. Delivery checks/handovers, changes/milestones and full care workflow.
-6. Public project pages/forms, tasks/calendar/messages, reports/export/audit.
-7. Concurrency, isolation, workflows, UI/mobile tests; publish private demo; record actual limitations.
+## Start
 
-## Non-negotiable invariants
-- Project has one owning organization; billing never grants data access. Grants checked per operation and record; previous buyers and reassigned contractors cannot see current private data.
-- One active allocation per inventory item. Home + accessories acquire together in stable lock order. Stale requests/versions cannot overwrite newer facts.
-- Request != hold != reservation; fully signed != binding != completed != handed over.
-- Expiry rechecks signing/payment risk and never releases a reserved/committed/completed allocation.
-- Money uses integer minor units. Evidence != confirmed receipt. Allocations cannot overpay a schedule item or overspend a transaction. Corrections use linked movements.
-- Refund and bank-account production approvals require another authorized person. Admin does not bypass legal/finance/delivery gates.
-- Contractor submits work; customer care verifies closure with owner response or documented follow-up. Declining a job does not decline the claim.
-- Audit and outbox are atomic with state changes; retries are idempotent. Files are private and audience checked again on download.
-- Public availability uses live server data, not published website snapshots. Exports have the same scope as screens.
+1. `pnpm install --frozen-lockfile`
+2. Configure `PROJECTOS_INTERNAL_KEY` and `SUPABASE_PROJECT_URL` as server-only runtime values. Never prefix secrets with `NEXT_PUBLIC_` or `VITE_`. For local development use ignored `.env.local`.
+3. Apply SQL from `db/projectos_demo.sql`, `db/projectos_demo_jobs.sql`, `db/projectos_demo_storage.sql`, and `db/projectos_demo_inquiries.sql` in that order to an approved demo Supabase project.
+4. Deploy `supabase/functions/projectos-gateway/index.ts`; configure its accepted SHA-256 server-key fingerprint to match the server key. JWT platform verification is off only because this function verifies a server-to-server secret before every operation. It is never called directly by a public browser.
+5. `pnpm dev`, or `sites-preview start /absolute/checkout` in the managed preview environment.
+6. `node tests/acceptance.mjs`, `pnpm exec tsc --noEmit --incremental false`, then `pnpm build`.
 
-## Verification to record
-- Two conflicting reservations: only one succeeds; all-or-nothing accessory allocation.
-- Expiry vs reservation/payment/signing; duplicate keys and mismatched payloads.
-- Tenant isolation, agent/buyer/contractor scope, revocation, internal-message secrecy.
-- Partial receipts/refunds/reversal; signature/completion/handover gates.
-- End-to-end repair including decline, reassignment, evidence, review, reopen.
-- Persistence across reload, public forms, filters, deep links, empty/error states, narrow viewport and keyboard.
-- Actual backup/restore and production operational checks are release gates; do not fabricate results.
+## Site deployment
 
-## Current status
-Discovery complete. Implementation in progress. No production readiness assertion.
+`.openai/hosting.json` identifies the existing private Site. Preserve it and use the Sites source/build/package/publish workflow. Runtime secrets are stored separately from source. Do not publish this demo as a production sales service or broaden its audience without an explicit decision.
+
+## Roles and example walkthrough
+
+Use the **View as** control only within the fictional demo. Manager approves A-204's offer; Sales creates its hold; Legal uploads, reviews and verifies the reservation agreement; Finance verifies CAD 4,000 and CAD 6,000 and allocates both to the deposit. Manager confirms reservation. Legal verifies all sale-agreement signatures and binding conditions. Finance verifies CAD 90,000 and CAD 400,000, allocates the receipts and clears finance; Legal records final evidence. Manager completes the sale. Delivery records inspection/readiness and handover. Buyer reports an issue; Care approves and assigns; Contractor schedules, starts and submits photo evidence; Buyer responds; Care verifies closure.
+
+The original generated architectural illustration remains in Site history; the GitHub working source uses the compressed WebP asset. All people, projects and monetary amounts are fictional.
+
+## Routes
+
+- Marketing: `/`, `/product`, `/how-it-works`, `/solutions`, `/contact`, `/privacy`, `/terms`, `/sign-in`.
+- Development: `/developments/:slug`, `/developments/:slug/homes`, `/developments/:slug/homes/:unitId`.
+- Workspace: `/app` and `/app/:projectId/:section/:recordId`.
+- Server API: `/api/os`, `/api/os/upload`, `/api/os/files/:id`, `/api/contact`.
+
+## Extension boundaries
+
+Payment intake and e-signing providers are not integrated. No webhook adapter is active. Financial movements are separate from the software subscription. No tax/legal rule, binding contract effect, or registry filing is inferred by software.

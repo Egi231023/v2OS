@@ -1,0 +1,2 @@
+import {Frame} from '../Marketing';import Link from 'next/link';
+export default function SignIn(){return <Frame><main className="marketing-section legal-page"><span className="eyebrow">DEMO WORKSPACE</span><h1 className="editorial-title">Continue to ProjectOS.</h1><p className="intro">The private demonstration is available to invited viewers through the workspace host. Production invitations and sign-in are not activated.</p><Link className="btn primary" href="/app" style={{marginTop:25}}>Open fictional workspace →</Link></main></Frame>}

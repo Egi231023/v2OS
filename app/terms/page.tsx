@@ -1,0 +1,2 @@
+import {Frame} from '../Marketing';
+export default function Terms(){return <Frame><main className="marketing-section legal-page"><span className="eyebrow">DEMO INFORMATION</span><h1 className="editorial-title">Terms of this demonstration</h1><p>The people, properties, prices and documents shown here are fictional. No reservation, sale agreement, payment or repair booking made in this demonstration applies to a real property. A signed-off set of terms and local procedures is required before real customers can use ProjectOS.</p></main></Frame>}
