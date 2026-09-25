@@ -1,0 +1,50 @@
+name: Verify ProjectOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+      WRANGLER_SEND_METRICS: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+          run_install: false
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+      - name: Sales, payments, handover and repair rules
+        run: node tests/acceptance.mjs
+      - name: Project setup, grants and import rules
+        run: node tests/setup.mjs
+      - name: Report isolation and task assignment rules
+        run: node tests/reports.mjs
+      - name: Build application
+        run: pnpm run build
+
+# No deployment, database migration, customer data or production secrets.
+# Live database races, browser/mobile flows and backup restoration remain
+# separate acceptance gates; passing this workflow does not certify them.
