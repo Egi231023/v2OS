@@ -17,6 +17,11 @@ Deno.serve(async req => {
  if(raw.length>8_000_000)return new Response("Payload too large",{status:413});
  let body: Record<string,unknown>;
  try { body=JSON.parse(raw); } catch {return new Response("Invalid JSON",{status:400});}
+ if(body?.action==='team'){
+  if(typeof body.requester!=='string'||!body.requester.startsWith('site:'))return Response.json({error:'Sign in required.'},{status:403});
+  const {data,error}=await admin.rpc('os_team_manage',{p_requester:body.requester,p_action:body.operation,p_data:body.data||{},p_seed:body.seed||null});
+  return error?Response.json({error:error.code==='PT403'?'Team access denied.':error.message},{status:error.code==='PT403'?403:400}):Response.json(data,{headers:{'Cache-Control':'no-store'}});
+ }
  if(body?.action==="inquiry") {
    const name=String(body.name||"").trim(),email=String(body.email||"").trim().toLowerCase(),company=String(body.company||"").trim(),message=String(body.message||"").trim();
    if(name.length<2||name.length>120||company.length<2||company.length>120||message.length<10||message.length>1500||email.length>200||!/^\S+@\S+\.\S+$/.test(email))return Response.json({error:"Check the form fields."},{status:400});
@@ -25,6 +30,18 @@ Deno.serve(async req => {
    return error?Response.json({error:"Contact form unavailable."},{status:503}):Response.json({received:true});
  }
  if(!body || !["read","lookup","commit","upload","download"].includes(body.action as string) || typeof body.subject!=="string" || !body.subject.startsWith("site:"))return new Response("Invalid request",{status:400});
+ if(body.teamId){
+  if(typeof body.requester!=='string'||!body.requester.startsWith('site:'))return Response.json({error:'Sign in required.'},{status:403});
+  const {data:root,error}=await admin.rpc('os_team_read',{p_team:body.teamId,p_requester:body.requester});
+  if(error||!root)return Response.json({error:'Team access unavailable.'},{status:403});
+  body.subject=root.subject;
+  if(body.action==='read')return Response.json(root,{headers:{'Cache-Control':'no-store'}});
+  if(!root.allowedActors.includes(body.actor))return Response.json({error:'Role not assigned to this account.'},{status:403});
+  if(body.action==='commit'){
+   const {data,error:commitError}=await admin.rpc('os_team_commit',{p_team:body.teamId,p_requester:body.requester,p_expected:body.expected,p_state:body.state,p_actor:body.actor,p_action:body.operation,p_key:body.key,p_hash:body.hash,p_result:body.result,p_reason:body.reason||'',p_entity:body.entity||null});
+   return commitError?Response.json({error:commitError.code==='PT403'?'Team access revoked.':'Data changed or validation failed.',code:commitError.code},{status:commitError.code==='PT403'?403:['PT409','23505','40001'].includes(commitError.code)?409:400}):Response.json(data,{headers:{'Cache-Control':'no-store'}});
+  }
+ }else if((body.subject as string).startsWith('site:team:'))return Response.json({error:'Team authorization required.'},{status:403});
  if(body.action==="upload" || body.action==="download") {
    const path=body.path;
    if(typeof path!=="string" || !/^demo\/[a-f0-9]{64}\/[a-f0-9-]{36}$/.test(path))return new Response("Invalid file path",{status:400});

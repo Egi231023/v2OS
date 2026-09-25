@@ -5,7 +5,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import ts from 'typescript';
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'projectos-acceptance-'));
-for(const name of ['domain','engine']){let source=fs.readFileSync(`lib/projectos/${name}.ts`,'utf8').replace("from './domain'","from './domain.mjs'");const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;fs.writeFileSync(path.join(temp,`${name}.mjs`),code)}
+for(const name of ['domain','setup','csv','engine']){let source=fs.readFileSync(`lib/projectos/${name}.ts`,'utf8').replace("from './domain'","from './domain.mjs'").replace("from './setup'","from './setup.mjs'");const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;fs.writeFileSync(path.join(temp,`${name}.mjs`),code)}
 const {seed,access,projection,balance}=await import(pathToFileURL(path.join(temp,'domain.mjs'))),{run}=await import(pathToFileURL(path.join(temp,'engine.mjs')));
 let state=seed();const who=id=>state.actors.find(a=>a.id===id),entity=id=>state.entities.find(e=>e.id===id),invoke=(actor,action,id,data={})=>{const command={key:crypto.randomUUID(),action,id,expectedVersion:id?entity(id)?.version:undefined,data};const output=run(state,who(actor),command);state=output.state;return output.id};
 const fail=(actor,action,id,data,pattern)=>assert.throws(()=>invoke(actor,action,id,data),pattern);

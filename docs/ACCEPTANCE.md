@@ -5,8 +5,8 @@ Version: ProjectOS demo source delivered 24 September 2026. This matrix distingu
 | ID | Status | Evidence / remaining requirement |
 |---|---|---|
 | A01 | Not run (full scenario) | Code test denies cross-organization inventory read/write; API/export/file penetration checks remain. |
-| A02 | Not run | Billing change workflow not implemented. |
-| A03 | Not run | Revocation denial and task reassignment implemented; agency replacement integration not tested. |
+| A02 | Pass (code) | Changing payer preserves canonical owner and does not grant the agency access; tests/setup.mjs. |
+| A03 | Partial | Code proves one grant can be revoked without changing other project grants. Live DB test denies revoked shared-account reads and commits. Full agency replacement remains untested. |
 | A04 | Pass (API/database) | Two simultaneous Edge API commits from one revision produced exactly one success and one 409. Exactly one deal held all three items. |
 | A05 | Pass (code) | Failed conflicting item set leaves no partial allocation. |
 | A06 | Pass (API/database) | Live Edge API and SQL tests returned the same result on replay and rejected the same key with changed content. Browser lost-response simulation pending. |
@@ -42,6 +42,10 @@ Version: ProjectOS demo source delivered 24 September 2026. This matrix distingu
 | A36 | Blocked | Code journey passes through verified repair; desktop/mobile browser validation blocked by environment policy. |
 
 Executed: `node tests/acceptance.mjs` and TypeScript check. The test source is the reproducible evidence for code-level Pass rows. No production readiness, legal compliance, availability SLA, restore time or capacity is claimed.
+
+25 September 2026: both `tests/acceptance.mjs` and `tests/setup.mjs` passed after recovery from the disconnected environment. New checks cover project creation, grant independence, CSV quoting/row validation/atomic rejection, external-ID deduplication, arbitrary-price EUR deals, frozen policy versions, exact instalment totals and two-person bank approval. The grant alias regression was reproduced and fixed by copying project-ID arrays when issuing or extending access.
+
+`tests/team-access.sql` passed on the connected Supabase database: unrelated/pending identities cannot read; applicants cannot self-approve; commits reject unassigned actors; an approved actor can commit; revocation denies the next read and commit. Fixtures were rolled back. This is RPC/database evidence, not a browser-level invitation or concurrent two-browser test. Security advisor returned only informational no-policy notices on deliberately private server-only tables (see remediation explanation below).
 
 Executed `node --env-file=.env.local tests/integration.mjs` against the actual Edge API on 24 September 2026. Final result: PASS. The first concurrency attempts timed out; after replacing the stale-revision SQLSTATE with explicit PT409, the complete concurrent request/replay test passed. This is not a latency guarantee. Temporary QA authorization was removed after testing. Fictional QA workspaces remain isolated from customer data.
 

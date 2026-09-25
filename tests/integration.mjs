@@ -7,7 +7,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import ts from 'typescript';
 if(!process.env.PROJECTOS_INTERNAL_KEY||!process.env.SUPABASE_PROJECT_URL)throw new Error('Configure server-only demo environment values.');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'projectos-integration-'));
-for(const name of ['domain','engine']){const source=fs.readFileSync(`lib/projectos/${name}.ts`,'utf8').replace("from './domain'","from './domain.mjs'");fs.writeFileSync(path.join(temp,name+'.mjs'),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText)}
+for(const name of ['domain','setup','csv','engine']){const source=fs.readFileSync(`lib/projectos/${name}.ts`,'utf8').replace("from './domain'","from './domain.mjs'").replace("from './setup'","from './setup.mjs'");fs.writeFileSync(path.join(temp,name+'.mjs'),ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText)}
 const {seed}=await import(pathToFileURL(path.join(temp,'domain.mjs'))),{run}=await import(pathToFileURL(path.join(temp,'engine.mjs')));
 const subject='site:qa-concurrency-'+randomUUID();
 async function request(body){const response=await fetch(process.env.SUPABASE_PROJECT_URL+'/functions/v1/projectos-gateway',{method:'POST',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/json','x-projectos-key':process.env.PROJECTOS_INTERNAL_KEY},body:JSON.stringify({subject,...body})});return {status:response.status,data:await response.json()}}

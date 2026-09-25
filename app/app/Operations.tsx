@@ -1,10 +1,10 @@
 'use client';
-import {Actor,RecordItem,money,nice,prettyDate} from '@/lib/projectos/domain';
+import {Actor,RecordItem,money as formatMoney,nice,prettyDate} from '@/lib/projectos/domain';
 import {ActionButton} from './ActionForm';
 
 type Props={section:string;projectId:string;actor:Actor;records:RecordItem[];actors:Actor[];selected:string;onComplete:()=>Promise<void>};
 export default function Operations({section,projectId,actor,records,actors,selected,onComplete}:Props){
- const scoped=records.filter(x=>x.projectId===projectId);
+ const money=(n:number)=>formatMoney(n,records.find(x=>x.id===projectId)?.data.currency||'CAD');const scoped=records.filter(x=>x.projectId===projectId);
  const act=(item:RecordItem,label:string,action:string)=><ActionButton label={label} action={action} context={{id:item.id,version:item.version,projectId:item.projectId,dealId:item.dealId,parentId:item.parentId}} records={records} actors={actors} onComplete={onComplete}/>;
  const create=(label:string,action:string,dealId?:string)=><ActionButton label={label} action={action} context={{projectId,dealId}} records={records} actors={actors} onComplete={onComplete}/>;
  const box=(title:string,children:React.ReactNode)=><section className="surface" style={{marginTop:20}}><div className="surface-head"><h2>{title}</h2></div><div className="surface-pad column">{children}</div></section>;

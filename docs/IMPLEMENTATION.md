@@ -4,16 +4,16 @@
 
 React 19, TypeScript, Vinext/Next-compatible routing, existing Shadcn primitives, Cloudflare-compatible Sites Worker. Supabase Postgres, private Storage, Edge Functions and pg_cron provide server persistence. Keep `pnpm-lock.yaml` and use the declared pnpm version.
 
-The demonstration state is a versioned JSONB aggregate per authenticated Site viewer. A workspace row lock serializes writes; normalized allocation rows enforce exclusive inventory through a partial unique index. The commit RPC checks references and payment allocation bounds and writes state, audit, outbox and idempotency together. This deliberate demonstration architecture is not the final normalized, shared multi-user production model.
+The demonstration state is a versioned JSONB aggregate per personal or shared sandbox. A workspace row lock serializes writes; normalized allocation rows enforce exclusive inventory through a partial unique index. The commit RPC checks references and payment allocation bounds and writes state, audit, outbox and idempotency together. Shared memberships map trusted Sites identities to assigned actors; revocation and commits use the same workspace lock. This sandbox architecture is not the final normalized production model.
 
 ## Start
 
 1. `pnpm install --frozen-lockfile`
 2. Configure `PROJECTOS_INTERNAL_KEY` and `SUPABASE_PROJECT_URL` as server-only runtime values. Never prefix secrets with `NEXT_PUBLIC_` or `VITE_`. For local development use ignored `.env.local`.
-3. Apply SQL from `db/projectos_demo.sql`, `db/projectos_demo_jobs.sql`, `db/projectos_demo_storage.sql`, and `db/projectos_demo_inquiries.sql` in that order to an approved demo Supabase project.
+3. Apply SQL from `db/projectos_demo.sql`, `db/projectos_demo_jobs.sql`, `db/projectos_demo_storage.sql`, `db/projectos_demo_inquiries.sql`, and `db/projectos_teams.sql` in that order to an approved demo Supabase project.
 4. Deploy `supabase/functions/projectos-gateway/index.ts`; configure its accepted SHA-256 server-key fingerprint to match the server key. JWT platform verification is off only because this function verifies a server-to-server secret before every operation. It is never called directly by a public browser.
 5. `pnpm dev`, or `sites-preview start /absolute/checkout` in the managed preview environment.
-6. `node tests/acceptance.mjs`, `pnpm exec tsc --noEmit --incremental false`, then `pnpm build`.
+6. `node tests/acceptance.mjs`, `node tests/setup.mjs`, `pnpm exec tsc --noEmit --incremental false`, then `pnpm build`. Run `tests/team-access.sql` through an authorized database connection; the test uses a transaction and rolls back its fixtures.
 
 ## Site deployment
 
@@ -30,6 +30,7 @@ The original generated architectural illustration remains in Site history; the G
 - Marketing: `/`, `/product`, `/how-it-works`, `/solutions`, `/contact`, `/privacy`, `/terms`, `/sign-in`.
 - Development: `/developments/:slug`, `/developments/:slug/homes`, `/developments/:slug/homes/:unitId`.
 - Workspace: `/app` and `/app/:projectId/:section/:recordId`.
+- Shared workspace membership management: `/team`, `/api/os/team`. Site sharing is an independent prerequisite; no emails or invitations are sent automatically.
 - Server API: `/api/os`, `/api/os/upload`, `/api/os/files/:id`, `/api/contact`.
 
 ## Extension boundaries

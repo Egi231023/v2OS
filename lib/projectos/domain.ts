@@ -30,7 +30,7 @@ export function seed():State{const now=new Date().toISOString(),entities:RecordI
  add('appointment','viewing-mila','Mila Ross · viewing','requested',{startsAt:later(1),endsAt:new Date(Date.parse(later(1))+3600000).toISOString(),resource:'Cedar sales office',type:'viewing',contactId:'contact-mila'},'cedar-quay',undefined,'sales');
  add('commission','commission-emma','Northline Realty · A-204','expected',{recipientId:'agent-a',amountCents:1000000,currency:'CAD',rateBps:200,ruleVersion:1,trigger:'completion'},'cedar-quay','deal-emma','agent-a');
  add('message','welcome','Welcome to Cedar Quay','sent',{audience:'buyer',body:'Your offer is being reviewed. We will keep your next step updated here.',recipients:['buyer','co-buyer']},'cedar-quay','deal-emma','sales');
- for(const p of actors.filter(x=>x.id!=='other-owner'))add('grant',`grant-${p.id}`,p.name,'active',{actorId:p.id,projectIds:p.projectIds,expiresAt:null},p.projectIds[0],undefined,'admin');
+ for(const p of actors.filter(x=>x.id!=='other-owner'))add('grant',`grant-${p.id}`,p.name,'active',{actorId:p.id,projectIds:[...p.projectIds],expiresAt:null},p.projectIds[0],undefined,'admin');
  return {mode:'demo',entities,actors,createdAt:now};}
 export const find=(s:State,id:string)=>s.entities.find(e=>e.id===id);
 export const allocations=(s:State,itemId:string)=>s.entities.find(e=>e.kind==='allocation'&&e.data.itemId===itemId&&!e.data.endedAt);
@@ -48,6 +48,7 @@ export function access(s:State,a:Actor,e:RecordItem):boolean{
  if(a.role==='property_manager')return e.kind==='project'||(e.kind==='service'&&!e.dealId)||(e.kind==='task'&&e.ownerId===a.id)||(e.kind==='document'&&e.data.audience==='technical'&&!e.dealId);
  const related=s.entities.find(d=>d.kind==='deal'&&d.id===e.dealId);if(a.role==='buyer'){
    const deals=s.entities.filter(d=>d.kind==='deal'&&d.data.partyActorIds?.includes(a.id));
+   if(e.kind==='bank_account')return e.status==='approved'&&deals.some(d=>d.projectId===e.projectId);
    if(e.kind==='project')return deals.some(d=>d.projectId===e.id);
    if(e.kind==='inventory')return deals.some(d=>d.data.itemIds?.includes(e.id));
    if(e.kind==='milestone')return e.status==='published';
@@ -79,4 +80,4 @@ export function projection(s:State,a:Actor,revision:number,updatedAt:string){
  if(a.role==='contractor'){involved.add('care')}
  if(a.role==='agent'){for(const e of visible)if(e.kind==='deal'&&e.ownerId)involved.add(e.ownerId)}
  const actors=s.actors.filter(x=>!['buyer','contractor','agent','property_manager'].includes(a.role)?x.organizationId===a.organizationId||x.projectIds.some(p=>a.projectIds.includes(p))&&x.role==='agent':involved.has(x.id)).map(({id,name,role,organizationId,projectIds,active,company})=>({id,name,role,organizationId,projectIds,active,company}));
- return {actor:a,actors,demoActors:s.actors.map(({id,name,role,active})=>({id,name,role,active})),entities:visible.map(e=>{const x=structuredClone(e);if(a.role==='contractor'){if(e.kind==='service')x.data={description:e.data.description,location:e.data.location,priority:e.data.priority,category:e.data.category};if(e.kind==='project')x.data={city:e.data.city,timezone:e.data.timezone};delete x.dealId}if(a.role==='buyer'&&e.kind==='deal'){delete x.data.financeApproval;delete x.data.legalCompletion;delete x.data.agentId;delete x.data.contactId}if(e.kind==='document'){delete x.data.storageKey;delete x.data.fileId}return x}),revision,updatedAt,mode:'demo' as const}}
+ return {actor:a,actors,demoActors:s.actors.map(({id,name,role,active})=>({id,name,role,active})),entities:visible.map(e=>{const x=structuredClone(e);if(a.role==='contractor'){if(e.kind==='service')x.data={description:e.data.description,location:e.data.location,priority:e.data.priority,category:e.data.category};if(e.kind==='project')x.data={city:e.data.city,timezone:e.data.timezone};delete x.dealId}if(a.role==='buyer'&&e.kind==='bank_account')x.data={instructions:e.data.instructions,currency:e.data.currency,approvedAt:e.data.approvedAt};if(a.role==='buyer'&&e.kind==='deal'){delete x.data.financeApproval;delete x.data.legalCompletion;delete x.data.agentId;delete x.data.contactId}if(e.kind==='document'){delete x.data.storageKey;delete x.data.fileId}return x}),revision,updatedAt,mode:'demo' as const}}
