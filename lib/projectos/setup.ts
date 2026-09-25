@@ -1,5 +1,5 @@
 import {State,Actor,Command,RecordItem,Kind,DomainError,access,find,allocations} from './domain';
-export const setupActions=new Set(['project.create','project.policy','inventory.import','deal.create','grant.create','grant.restore','grant.revoke','project.billing','bank.propose','bank.approve','change.order','change.implement','change.verify','milestone.create','request.review','service.pause','service.resume']);
+export const setupActions=new Set(['project.create','project.policy','inventory.import','deal.create','grant.create','grant.restore','grant.revoke','project.billing','bank.propose','bank.approve','change.order','change.implement','change.verify','milestone.create','request.review','service.pause','service.resume','task.assign']);
 function fail(message:string):never{throw new DomainError(message)}
 const text=(v:unknown,label:string,max=250)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():fail(label+' is required.');
 const integer=(v:unknown,min:number,max:number,label:string)=>Number.isSafeInteger(Number(v))&&Number(v)>=min&&Number(v)<=max?Number(v):fail('Invalid '+label+'.');
@@ -13,6 +13,12 @@ export function setup(s:State,a:Actor,c:Command,now:string){
  const e=c.id?get(c.id):undefined;if(e&&c.expectedVersion!==undefined&&c.expectedVersion!==e.version)throw new DomainError('Record changed. Refresh and retry.',409);
  let out:RecordItem;
  switch(c.action){
+ case 'task.assign':{
+  role('admin','manager');if(e?.kind!=='task'||e.status!=='open')fail('Choose an open task.');
+  const target=s.actors.find(x=>x.id===d.actorId&&x.active),parent=find(s,e.data.entityId)||e;
+  if(!target||!access(s,target,e)||!access(s,target,parent))fail('The assignee needs an existing valid grant to this task and its record.');
+  const dueAt=date(d.dueAt),reason=text(d.reason,'Assignment reason');e.data.assignmentHistory=[...(e.data.assignmentHistory||[]),{ownerId:e.ownerId,dueAt:e.data.dueAt,changedBy:a.id,at:now,reason}];e.ownerId=target.id;e.data.dueAt=dueAt;bump(e);out=e;break;
+ }
  case 'project.create':{
   role('admin');const title=text(d.title,'Project name'),slug=text(d.slug,'Slug',80).toLowerCase();if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||s.entities.some(x=>x.kind==='project'&&x.data.slug===slug))fail('Choose a unique lowercase project slug.');
   const currency=text(d.currency,'Currency');if(!['CAD','EUR','USD','GBP'].includes(currency))fail('Choose a supported currency.');const timezone=text(d.timezone,'Time zone');try{new Intl.DateTimeFormat('en',{timeZone:timezone})}catch{fail('Use a valid IANA time zone.')}
